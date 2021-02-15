@@ -1,5 +1,5 @@
 import React from "react";
-import Card from "./Card";
+import Card from "./Card/Card";
 // import Answer from "./Answer";
 
 const Comment = (props) => {
@@ -12,7 +12,7 @@ const Comment = (props) => {
 
   return (
     <div style={divStyle}>
-      <Card comment={props.comment} />
+      <Card comment={props.comment} commentId={props.commentId} user={props.user} loggedInUser={props.loggedInUser}/>
     </div>
   );
 };

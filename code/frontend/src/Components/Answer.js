@@ -1,5 +1,5 @@
 import React from "react";
-import Comment from "./Comment";
+// import Comment from "./Comment";
 import { TextField, Button } from "@material-ui/core";
 import SendRoundedIcon from "@material-ui/icons/SendRounded";
 import AnswerCard from "./AnswerCard";
@@ -9,7 +9,6 @@ class Answer extends React.Component {
     super(props);
 
     // register username
-
     this.state = {
       username: "",
       comment: "",
@@ -25,23 +24,56 @@ class Answer extends React.Component {
     this.setState({ comment: event.target.value });
   }
 
-  handleSubmit(event) {
+  populateAnswers = async () => {
+    const response = await fetch(`http://localhost:8000/qa/${this.props.commentId}`);
+    const comment = await response.json();
+
+    this.setState({
+      commentsList: []
+    });
+
+    const commentsList = [];
+    let isWinnerFound = false;
+    comment.Answers.forEach(a => {
+      if (a.IsWinner) isWinnerFound = true;
+      commentsList.push({
+        answerId: a._id,
+        answer: a.AnswerText,
+        user: a.UserName,
+        isWinner: a.IsWinner
+      });
+    });
+
+    if (isWinnerFound) {
+      commentsList.forEach(c => c.isDisable = true);
+    }
+
+    this.setState({
+      commentsList: commentsList
+    });
+  }
+
+  componentDidMount = async () => {
+    await this.populateAnswers();
+  }
+
+  handleSubmit = async (event) => {
     event.preventDefault();
     if (this.state.comment === "" || this.state.comment == null) {
       return;
     }
-    var newComment = this.state.comment;
-
-    var newComments = this.state.commentsList;
-
-    newComments.push(newComment);
-    this.setState({
-      comment: "",
-      commentsList: newComments,
-      id: this.state.id + 1,
+    const username = this.props.loggedInUser.username;
+    await fetch(`http://localhost:8000/qa/answer?qid=${this.props.commentId}&username=${username}&answer=${this.state.comment}`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      }
     });
-  }
 
+    this.state.comment = "";
+    await this.populateAnswers();
+  }
   //   handle submit on when user presses enter
   inputKeyDown = (event) => {
     const val = event.target.value;
@@ -49,6 +81,18 @@ class Answer extends React.Component {
       this.handleSubmit(event);
     }
   };
+
+  handleAnswerSelect = async (answerId) => {
+    const commentId = this.props.commentId;
+    await fetch(`http://localhost:8000/qa/winner?qid=${commentId}&aid=${answerId}`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      }
+    });
+    this.populateAnswers();
+  }
 
   render() {
     const divStyle = {
@@ -80,7 +124,6 @@ class Answer extends React.Component {
             onKeyDown={(e) => this.inputKeyDown(e)}
             value={this.state.comment}
             multiline
-            rows={10}
           />
 
           <hr />
@@ -95,8 +138,17 @@ class Answer extends React.Component {
           </Button>
         </form>
 
-        {this.state.commentsList.map((comment) => (
-          <AnswerCard data={comment} />
+        {this.state.commentsList.map((c, index) => (
+          <div key={index}>
+            <AnswerCard answer={c.answer}
+              answerId={c.answerId}
+              isWinner={c.isWinner}
+              user={c.user}
+              commentId={this.props.commentId}
+              handleAnswerSelect={this.handleAnswerSelect}
+              isDisable={c.isDisable}
+            />
+          </div>
         ))}
       </div>
     );
